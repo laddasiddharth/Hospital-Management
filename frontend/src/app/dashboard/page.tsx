@@ -1,31 +1,27 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 const roleQuickActions: Record<
   string,
-  { title: string; desc: string; icon: string; color: string }[]
+  { title: string; desc: string; icon: string; color: string; href: string }[]
 > = {
   admin: [
-    { title: "Manage Users", desc: "Add doctors, receptionists, and staff", icon: "👥", color: "from-purple-500/20 to-purple-600/10" },
-    { title: "Departments", desc: "Configure hospital departments", icon: "🏢", color: "from-blue-500/20 to-blue-600/10" },
-    { title: "Analytics", desc: "View system-wide statistics", icon: "📊", color: "from-primary-500/20 to-primary-600/10" },
-    { title: "Settings", desc: "System configuration", icon: "⚙️", color: "from-surface-500/20 to-surface-600/10" },
+    { title: "Departments", desc: "Configure hospital departments", icon: "🏢", color: "from-blue-500/20 to-blue-600/10", href: "/dashboard/departments" },
+    { title: "Doctors", desc: "View physician directory", icon: "👨‍⚕️", color: "from-primary-500/20 to-primary-600/10", href: "/dashboard/doctors" },
+    { title: "Appointments", desc: "View system-wide scheduling", icon: "📊", color: "from-purple-500/20 to-purple-600/10", href: "/dashboard/appointments" },
   ],
   doctor: [
-    { title: "My Queue", desc: "View patients waiting for you", icon: "📋", color: "from-primary-500/20 to-primary-600/10" },
-    { title: "Schedule", desc: "Manage your availability", icon: "📅", color: "from-accent-500/20 to-accent-600/10" },
-    { title: "Patients", desc: "View patient history", icon: "🩺", color: "from-blue-500/20 to-blue-600/10" },
+    { title: "My Schedule", desc: "Manage your consultations", icon: "📅", color: "from-accent-500/20 to-accent-600/10", href: "/dashboard/appointments" },
   ],
   receptionist: [
-    { title: "Walk-in", desc: "Register walk-in patients", icon: "🚶", color: "from-warning-500/20 to-warning-600/10" },
-    { title: "Queue", desc: "Manage the live queue", icon: "📋", color: "from-primary-500/20 to-primary-600/10" },
-    { title: "Check-in", desc: "Confirm patient arrivals", icon: "✅", color: "from-accent-500/20 to-accent-600/10" },
+    { title: "Book Walk-in", desc: "Register walk-in patients", icon: "🚶", color: "from-warning-500/20 to-warning-600/10", href: "/dashboard/book" },
+    { title: "Appointments", desc: "Manage pending records", icon: "📋", color: "from-primary-500/20 to-primary-600/10", href: "/dashboard/appointments" },
   ],
   patient: [
-    { title: "Book Appointment", desc: "Schedule your next visit", icon: "📅", color: "from-primary-500/20 to-primary-600/10" },
-    { title: "My Queue", desc: "Track your live position", icon: "⏳", color: "from-accent-500/20 to-accent-600/10" },
-    { title: "History", desc: "View past appointments", icon: "📜", color: "from-blue-500/20 to-blue-600/10" },
+    { title: "Book Appointment", desc: "Schedule your next visit", icon: "📅", color: "from-primary-500/20 to-primary-600/10", href: "/dashboard/book" },
+    { title: "History", desc: "View past appointments", icon: "📜", color: "from-blue-500/20 to-blue-600/10", href: "/dashboard/appointments" },
   ],
 };
 
@@ -38,6 +34,8 @@ const stats = [
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
+  
   if (!user) return null;
 
   const greeting = getGreeting();
@@ -62,7 +60,7 @@ export default function DashboardPage() {
           <div
             key={stat.label}
             className={`glass rounded-2xl p-5 glass-hover transition-all duration-300 animate-slide-up stagger-${i + 1}`}
-            style={{ opacity: 0 }}
+            style={{ opacity: 0, animationFillMode: 'forwards' }}
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-2xl">{stat.icon}</span>
@@ -81,9 +79,10 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {actions.map((action, i) => (
             <button
+              onClick={() => router.push(action.href)}
               key={action.title}
               className={`group relative glass rounded-2xl p-6 text-left transition-all duration-300 hover:border-primary-500/30 cursor-pointer animate-slide-up stagger-${i + 1}`}
-              style={{ opacity: 0 }}
+              style={{ opacity: 0, animationFillMode: 'forwards' }}
             >
               <div
                 className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
@@ -97,22 +96,6 @@ export default function DashboardPage() {
               </div>
             </button>
           ))}
-        </div>
-      </div>
-
-      {/* Coming Soon Notice */}
-      <div className="glass rounded-2xl p-6 border-dashed border-surface-700/50">
-        <div className="flex items-start gap-4">
-          <span className="text-2xl">🚀</span>
-          <div>
-            <h3 className="font-semibold text-surface-200 mb-1">
-              Phase 2 Coming Soon
-            </h3>
-            <p className="text-sm text-surface-400">
-              Appointment booking, doctor schedules, and the live queue system
-              are being built. Stay tuned for real-time updates!
-            </p>
-          </div>
         </div>
       </div>
     </div>

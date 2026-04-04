@@ -36,7 +36,7 @@ function SetupPasswordForm() {
     setError("");
 
     try {
-      const resp = await fetch(`http://localhost:8000/auth/set-password`, {
+      const resp = await fetch(`/api/auth/set-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, new_password: password }),

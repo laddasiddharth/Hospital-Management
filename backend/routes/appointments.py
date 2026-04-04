@@ -9,6 +9,7 @@ from models.doctor import Doctor
 from models.user import User, UserRole
 from schemas.appointment import AppointmentResponse, AppointmentCreate, AppointmentUpdate
 from auth.dependencies import require_role, get_current_user
+from services.notifications import send_appointment_confirmation, send_appointment_cancellation
 
 router = APIRouter(prefix="/api/appointments", tags=["Appointments"])
 
@@ -69,6 +70,21 @@ def book_appointment(
     db.add(appointment)
     db.commit()
     db.refresh(appointment)
+    
+    # 1. Fetch user for notification
+    patient_user = db.query(User).filter(User.id == patient_id).first()
+    doctor_user = db.query(User).filter(User.id == doctor.user_id).first()
+    
+    # 2. Send SMS/Email simulation
+    if patient_user and doctor_user:
+        send_appointment_confirmation(
+            patient_name=patient_user.full_name,
+            patient_contact=patient_user.email,
+            doctor_name=doctor_user.full_name,
+            date=str(appointment.appointment_date),
+            start_time=str(appointment.start_time)
+        )
+        
     return appointment
 
 
@@ -106,4 +122,19 @@ def update_appointment_status(
 
     db.commit()
     db.refresh(appointment)
+    
+    # Check if cancelled and send notification
+    if request.status == AppointmentStatus.CANCELLED:
+        patient_user = db.query(User).filter(User.id == appointment.patient_id).first()
+        doctor = db.query(Doctor).filter(Doctor.id == appointment.doctor_id).first()
+        if patient_user and doctor:
+            doctor_user = db.query(User).filter(User.id == doctor.user_id).first()
+            if doctor_user:
+                send_appointment_cancellation(
+                    patient_name=patient_user.full_name,
+                    patient_contact=patient_user.email,
+                    doctor_name=doctor_user.full_name,
+                    date=str(appointment.appointment_date)
+                )
+
     return appointment

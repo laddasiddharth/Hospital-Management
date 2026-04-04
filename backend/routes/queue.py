@@ -12,6 +12,7 @@ from models.user import User, UserRole
 from schemas.token_queue import TokenResponse, TokenCreate, TokenUpdateStatus, TokenUpdatePriority
 from auth.dependencies import require_role, get_current_user
 from routes.websocket import manager
+from services.notifications import send_token_alert
 
 router = APIRouter(prefix="/api/queue", tags=["Live Queue"])
 
@@ -145,6 +146,12 @@ async def update_token_status(
     token.status = request.status.value
     if request.status == TokenStatus.CALLED:
          token.called_time = func.now()
+         
+         # Dispatch mock SMS token alert
+         patient_user = db.query(User).filter(User.id == token.patient_id).first()
+         if patient_user:
+             send_token_alert(patient_name=patient_user.full_name, patient_contact=patient_user.phone, token_number=token.token_number)
+             
     elif request.status == TokenStatus.COMPLETED:
          token.completed_time = func.now()
 

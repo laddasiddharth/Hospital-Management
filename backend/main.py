@@ -6,6 +6,7 @@ from routes import departments as departments_router
 from routes import doctors as doctors_router
 from routes import appointments as appointments_router
 from routes import queue as queue_router
+from routes import records as records_router
 
 app = FastAPI(
     title="Smart Hospital API",
@@ -32,6 +33,7 @@ app.include_router(departments_router.router)
 app.include_router(doctors_router.router)
 app.include_router(appointments_router.router)
 app.include_router(queue_router.router)
+app.include_router(records_router.router)
 
 
 @app.get("/api/health")

@@ -3,6 +3,7 @@ from models.doctor import Doctor
 from models.department import Department
 from models.appointment import Appointment, AppointmentStatus
 from models.token_queue import TokenQueue, TokenStatus, TokenPriority
+from models.medical_record import MedicalRecord
 
 __all__ = [
     "User",
@@ -14,4 +15,5 @@ __all__ = [
     "TokenQueue",
     "TokenStatus",
     "TokenPriority",
+    "MedicalRecord",
 ]

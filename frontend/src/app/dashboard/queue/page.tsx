@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -17,6 +18,7 @@ interface TokenQueue {
 }
 
 export default function QueueManagementPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const [tokens, setTokens] = useState<TokenQueue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,11 +26,9 @@ export default function QueueManagementPage() {
   const fetchQueue = async () => {
     try {
       const url = user?.role === 'doctor' 
-         ? `/api/queue?doctor_id=${user.id}` // Wait, doctors map to doctor_id not straight user.id. Assuming the backend resolves it or we load it. For demo efficiency, we map all today.
+         ? `/api/queue?doctor_id=${user.id}` 
          : `/api/queue`;
          
-      // In practice, if role===doctor we'd fetch their specific `doctor.id`. 
-      // For this phase, we'll fetch all and filter client side if needed, or rely on the backend.
       const data = await api<TokenQueue[]>("/api/queue");
       setTokens(data);
     } catch {
@@ -45,7 +45,6 @@ export default function QueueManagementPage() {
     ws.onmessage = (event) => {
        const payload = JSON.parse(event.data);
        if (payload.event === "NEW_TOKEN" || payload.event === "STATE_UPDATE" || payload.event === "QUEUE_REORDER") {
-           // Refetch everything to ensure strict sync (in production we'd merge dynamically)
            fetchQueue();
        }
     };
@@ -57,7 +56,6 @@ export default function QueueManagementPage() {
       method: "PATCH",
       body: { status: newStatus }
     });
-    // WebSocket loop will trigger fetchQueue
   };
 
   const setEmergency = async (id: string) => {
@@ -69,7 +67,6 @@ export default function QueueManagementPage() {
 
   if (isLoading) return <LoadingSpinner size="lg" className="mt-20" />;
 
-  // Sort: Emergency First -> Priority -> Normal. Then by position.
   const priorityWeight: any = { "emergency": 3, "priority": 2, "normal": 1 };
   
   const sortedTokens = [...tokens]
@@ -126,9 +123,9 @@ export default function QueueManagementPage() {
                      </div>
                      <div className="flex gap-3">
                         {token.status === "called" && (
-                           <Button onClick={() => updateStatus(token.id, "in_consultation")} variant="secondary">Mark Consult</Button>
+                           <Button onClick={() => router.push(`/dashboard/consultation/${token.id}`)} variant="secondary">Start Consult</Button>
                         )}
-                        <Button onClick={() => updateStatus(token.id, "completed")} variant="primary">Complete</Button>
+                        <Button onClick={() => updateStatus(token.id, "completed")} variant="primary">Complete (No Notes)</Button>
                      </div>
                   </div>
                ))}

@@ -44,6 +44,16 @@ def get_live_queue(
         
     return query.order_by(TokenQueue.position).all()
 
+@router.get("/{token_id}", response_model=TokenResponse)
+def get_single_token(
+    token_id: UUID,
+    db: Session = Depends(get_db)
+):
+    token = db.query(TokenQueue).filter(TokenQueue.id == token_id).first()
+    if not token:
+        raise HTTPException(status_code=404, detail="Token not found")
+    return token
+
 
 @router.post("/generate", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def generate_token(

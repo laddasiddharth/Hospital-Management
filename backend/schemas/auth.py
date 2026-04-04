@@ -1,5 +1,8 @@
 from pydantic import BaseModel, EmailStr, Field
 
+class SetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 class RegisterRequest(BaseModel):
     email: EmailStr

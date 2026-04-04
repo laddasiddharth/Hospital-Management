@@ -20,6 +20,16 @@ class UserCreate(BaseModel):
     password: str
     full_name: str
     phone: str | None = None
+    role: str
+
+
+class AdminUserCreate(BaseModel):
+    email: EmailStr
+    full_name: str
+    phone: str | None = None
+    role: str
+    full_name: str
+    phone: str | None = None
     role: str = "patient"
 
 

@@ -28,7 +28,6 @@ export default function UserManagementPage() {
     full_name: "",
     email: "",
     phone: "",
-    password: "",
     role: "receptionist",
   });
 
@@ -59,12 +58,11 @@ export default function UserManagementPage() {
           full_name: form.full_name,
           email: form.email,
           phone: form.phone || null,
-          password: form.password,
           role: form.role,
         },
       });
       setIsModalOpen(false);
-      setForm({ full_name: "", email: "", phone: "", password: "", role: "receptionist" });
+      setForm({ full_name: "", email: "", phone: "", role: "receptionist" });
       fetchData();
     } catch (err: any) {
       setError(err.message || "Failed to create user account.");
@@ -160,12 +158,11 @@ export default function UserManagementPage() {
               <div className="space-y-2 mt-4">
                  <Input label="Full Name" type="text" placeholder="Jane Doe" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} required />
                  <Input label="Email" type="email" placeholder="jane@hospital.com" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required />
-                 <Input label="Temporary Password" type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required />
                  <Input label="Phone (Optional)" type="tel" placeholder="+1..." value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
               </div>
 
               <div className="pt-4">
-                <Button type="submit" size="lg" className="w-full">Create Account</Button>
+                <Button type="submit" size="lg" className="w-full">Create & Send Invite Link</Button>
                 {form.role === 'doctor' && (
                    <p className="text-xs text-center mt-3 text-surface-400 font-bold italic">Note: After creating this account, you must visit the <a href="/dashboard/doctors" className="underline text-primary-500">Physicians tab</a> to finish provisioning their medical profile.</p>
                 )}

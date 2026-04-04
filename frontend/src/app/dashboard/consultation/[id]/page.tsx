@@ -191,8 +191,7 @@ export default function ConsultationRoom() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-surface-700 mb-2">Laboratory Tests Requested</label>
-                <Input type="text" value={clinical.lab_tests_requested} onChange={e => setClinical({...clinical, lab_tests_requested: e.target.value})} disabled={isSaved} placeholder="Blood Count, MRI, etc." />
+                <Input label="Laboratory Tests Requested" type="text" value={clinical.lab_tests_requested} onChange={e => setClinical({...clinical, lab_tests_requested: e.target.value})} disabled={isSaved} placeholder="Blood Count, MRI, etc." />
               </div>
             </div>
           </div>

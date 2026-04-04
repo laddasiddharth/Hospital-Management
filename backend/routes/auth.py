@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.user import User, UserRole
-from schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest
+from schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, SetPasswordRequest
 from schemas.user import UserResponse
 from auth.security import (
     hash_password,
@@ -15,6 +15,26 @@ from auth.security import (
 from auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+
+@router.post("/set-password")
+def set_initial_password(request: SetPasswordRequest, db: Session = Depends(get_db)):
+    """Securely finish staff onboarding by setting their password from an invite link."""
+    payload = decode_token(request.token)
+    if not payload or payload.get("type") != "invite":
+        raise HTTPException(status_code=401, detail="Invalid or expired invitation link")
+
+    email = payload.get("sub")
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.hashed_password = hash_password(request.new_password)
+    # Automatically verify/activate user if they aren't
+    if not user.is_active:
+         user.is_active = True
+         
+    db.commit()
+    return {"message": "Password set successfully. You can now log in."}
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

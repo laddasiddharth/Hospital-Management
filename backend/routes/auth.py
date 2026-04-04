@@ -27,12 +27,17 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
             detail="Email already registered",
         )
 
+    user_role = UserRole.PATIENT.value
+    requested_role = request.role.lower()
+    if requested_role in [UserRole.DOCTOR.value, UserRole.RECEPTIONIST.value]:
+        user_role = requested_role
+
     user = User(
         email=request.email,
         hashed_password=hash_password(request.password),
         full_name=request.full_name,
         phone=request.phone,
-        role=UserRole.PATIENT.value,
+        role=user_role,
     )
     db.add(user)
     db.commit()

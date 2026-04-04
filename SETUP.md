@@ -1,23 +1,23 @@
-# Smart Hospital Appointment and Queue Management System
+# Smart Hospital Appointment & Queue Management System V3.0
 
-Welcome to the **Smart Hospital System**. This platform utilizes a robust full-stack architecture featuring a **FastAPI** Python backend (with WebSockets for real-time tracking) and a **Next.js** React frontend (styled with clean, modern Tailwind v4 components).
+Welcome to the **Smart Hospital System**. This platform utilizes a robust full-stack architecture featuring a **FastAPI** Python backend (with WebSockets for real-time tracking) and a **Next.js** React frontend (styled with a premium **Clinical Light Theme** and **Manrope** typography).
 
-This guide covers everything you need to know to get the system up and running on your local machine.
+V3.0 introduces expanded **EHR (Electronic Health Records)** capabilities including 8 distinct vital signs, BMI auto-calculation, and an immutable data architecture.
 
 ---
 
 ## 🏗️ Prerequisites
 Ensure you have the following installed before proceeding:
-1. **Python 3.10+** (For the backend server)
-2. **Node.js v18+** (For the frontend Next.js server)
-3. **PostgreSQL** (Active local or cloud database instance)
+1. **Python 3.10+** (Backend server)
+2. **Node.js v18+** (Frontend Next.js server)
+3. **PostgreSQL 15+** (Active local or cloud database instance)
 4. **Git**
 
 ---
 
 ## ⚙️ Backend Setup (FastAPI)
 
-The backend server manages the API, PostgreSQL database models, Authentication logic (JWT), and Live WebSockets mapping.
+The backend managed the API, PostgreSQL database models, JWT Authentication, and Live WebSockets mapping.
 
 1. **Navigate to the Backend Directory:**
    ```bash
@@ -42,8 +42,7 @@ The backend server manages the API, PostgreSQL database models, Authentication l
    ```
 
 4. **Configure Environment Variables:**
-   Create a `.env` file in the `backend/` folder directly. 
-   *(Make sure your PostgreSQL daemon is running locally unblocked).*
+   Create a `.env` file in the `backend/` folder:
    ```ini
    DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/hospital_db
    JWT_SECRET_KEY=your_super_secret_key_change_this_in_production
@@ -51,27 +50,24 @@ The backend server manages the API, PostgreSQL database models, Authentication l
    ```
 
 5. **Initialize the Database (Migrations & Tables):**
-   We have built native Python sync scripts to auto-generate mapping schemas for you.
    ```bash
    python sync.py
    ```
-   *(Optional: If you want to load mock Admins into your database quickly, run `python seed.py`)*
+   *(Optional: Use `python seed.py` to pre-load a demo Admin account)*
 
-6. **Start the Backend Server!**
-   Start the powerful ASGI asynchronous server. It must run on port `8000`.
+6. **Start the Backend Server:**
    ```bash
-   python -m uvicorn main:app --reload
+   uvicorn main:app --reload
    ```
-   *Your backend is now live at `http://localhost:8000/api/docs` (Interactive Swagger API)*
+   *Live Swagger Documentation: `http://localhost:8000/api/docs`*
 
 ---
 
 ## 💻 Frontend Setup (Next.js)
 
-The frontend houses the role-based dashboards, the Appointment Calendar wizard, and the Live Public WebSockets Queue Board.
+The frontend features role-based clinical dashboards, the Appointment Calendar wizard, and the Real-time Public Queue Board.
 
 1. **Navigate to the Frontend Directory:**
-   Open a **new terminal window** (keep the backend server running in the old one).
    ```bash
    cd frontend
    ```
@@ -81,44 +77,30 @@ The frontend houses the role-based dashboards, the Appointment Calendar wizard, 
    npm install
    ```
 
-3. **Configure the Environment:**
-   There is no extensive `.env` needed here, as the `src/lib/api.ts` file automatically targets standard `http://localhost:8000`.
-
-4. **Boot the React Server:**
+3. **Boot the React Server:**
    ```bash
    npm run dev
    ```
-   *Your frontend is now live at `http://localhost:3000`*
+   *Your portal is now live at `http://localhost:3000`*
 
 ---
 
-## 🚀 How to Utilize the Application (Demo Run)
+## 🚀 System Usage Flow (V3.0)
 
-Now that both servers are operating parallel to each other, follow this trail to see the magic happen:
+### 1. The Clinical Entry Point
+- Browse to `http://localhost:3000` to see the new professional marketing page.
+- Navigate to **Enrollment** (`/signup`) to initialize your doctor, patient, or receptionist profile.
 
-### 1. The Super Admin Console
-- Browse to `http://localhost:3000/login`.
-- If you ran `seed.py` earlier during setup, log in with Email: `admin@hospital.com` | Password: `Admin@123`.
-- Go to **Departments** and create a department (e.g., Cardiology).
-- Go to **Doctors** and link a user into that department.
+### 2. Comprehensive EHR & Vitals
+- **Consultation Room**: Doctors use the redesigned clinical interface to capture 8 vital signs:
+  - *Blood Pressure, Heart Rate, Respiratory Rate, SpO2 (%), Temperature, Height, Weight, and Auto-calculated BMI.*
+- **Immutable Records**: Once a consultation is saved, it becomes an immutable part of the patient's medical history timeline.
 
-### 2. The Patient Workflow
-- Sign out, and register a brand new patient account on the signup page.
-- Navigate to **Book Appointment**. Use the stunning 3-step Calendar wizard to grab a slot with the newly created Doctor.
+### 3. Real-time Infrastructure (WebSockets)
+- Open a browser on `http://localhost:3000/board` (Public TV Board).
+- As staff progress the queue in the **Live Queue Management** dashboard, the TV board will flash high-visibility "Please Proceed" alerts with audio in real-time.
 
-### 3. The Live TV Experience (WebSockets)
-- Open a **brand new split-screen window** and navigate to `http://localhost:3000/board`.
-- *Wait here. This is the TV running inside the physical hospital. Do not touch this window.*
+---
 
-### 4. Administer the Hospital Queue
-- On your primary screen, log back in as an Admin (or a Receptionist).
-- Navigate to **Hospital Queue**.
-- Hit `"Start Consult"`. 
-- Without refreshing or pressing a single button on your TV Board side-screen, watch the TV instantly flash the new patient Token loudly in real-time.
-
-### 5. Finalize the Medical Record (EHR)
-- Type symptoms inside the Consultation Room and hit "Save & Complete".
-- The patient completely disappears from the TV Board securely.
-- If the patient logs in, they will find the immutable Prescription waiting on their dashboard.
-
-Enjoy the application! 🏥
+### 🏥 Happy Healing!
+*Built for modern institutional medical administration.*

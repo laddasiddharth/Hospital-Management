@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import Button from "@/components/ui/Button";
@@ -45,7 +45,6 @@ export default function BookAppointmentPage() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedTime, setSelectedTime] = useState<string>("");
   
-  // Only for Receptionist
   const [patientId, setPatientId] = useState<string>("");
   const [patients, setPatients] = useState<User[]>([]);
 
@@ -55,12 +54,9 @@ export default function BookAppointmentPage() {
         const [docsData, deptsData, adminUsersData] = await Promise.all([
           api<Doctor[]>("/api/doctors?is_available=true"),
           api<Department[]>("/api/departments"),
-          // Fetch users if we need to display doctor names or if receptionist needs to select patient
           currentUser?.role === 'admin' || currentUser?.role === 'receptionist' 
              ? api<User[]>("/api/admin/users") 
-             : api<User[]>("/api/admin/users?role=doctor").catch(() => []) 
-             // Workaround: In a real app we'd need a public endpoint for doctor names, 
-             // but we'll simulate it for now.
+             : api<User[]>("/api/admin/users?role=doctor").catch(() => [])
         ]);
         
         setDoctors(docsData);
@@ -69,10 +65,11 @@ export default function BookAppointmentPage() {
         if (currentUser?.role === 'admin' || currentUser?.role === 'receptionist') {
              setUsers(adminUsersData);
              setPatients(adminUsersData.filter(u => u.role === 'patient'));
+        } else {
+             setUsers(adminUsersData);
         }
       } catch (e) {
-        // Ignoring fetch errors for users table for patients since they don't have admin access.
-        // In a real app, doctor names would be included in the public /api/doctors route.
+        console.error(e);
       } finally {
         setIsLoading(false);
       }
@@ -82,26 +79,23 @@ export default function BookAppointmentPage() {
 
   const getDoctorName = (userId: string) => {
     const u = users.find(u => u.id === userId);
-    return u ? `Dr. ${u.full_name}` : "Available Doctor";
+    return u ? `Dr. ${u.full_name}` : "Clinical Specialist";
   };
   
   const getDeptName = (deptId: string | null) => {
-    if (!deptId) return "General";
+    if (!deptId) return "General Medicine";
     const d = departments.find(d => d.id === deptId);
-    return d ? d.name : "General";
+    return d ? d.name : "General Medicine";
   };
 
-  // Generate simple time slots
   const generateTimeSlots = (duration: number) => {
     const slots = [];
     let startHour = 9;
     let startMin = 0;
-    
-    while (startHour < 17) { // 9 AM to 5 PM
-      const formattedHour = startHour.toString().padStart(2, '0');
-      const formattedMin = startMin.toString().padStart(2, '0');
-      slots.push(`${formattedHour}:${formattedMin}:00`);
-      
+    while (startHour < 17) {
+      const hStr = startHour.toString().padStart(2, '0');
+      const mStr = startMin.toString().padStart(2, '0');
+      slots.push(`${hStr}:${mStr}:00`);
       startMin += duration;
       if (startMin >= 60) {
          startHour += Math.floor(startMin / 60);
@@ -113,39 +107,28 @@ export default function BookAppointmentPage() {
 
   const handleBooking = async () => {
     if (!selectedDoctor || !selectedDate || !selectedTime) return;
-    
     setIsSubmitting(true);
     setError("");
-    
     try {
       const payload: any = {
         doctor_id: selectedDoctor.id,
         appointment_date: selectedDate,
         start_time: selectedTime,
-        end_time: selectedTime, // Simplified
-        notes: "Booked via Calendar"
+        end_time: selectedTime,
+        notes: "Automated Clinical Booking"
       };
-      
       if (currentUser?.role === 'receptionist' || currentUser?.role === 'admin') {
-         if (!patientId) {
-             throw new Error("Must select a patient");
-         }
+         if (!patientId) throw new Error("Please select a patient for this booking.");
          payload.patient_id = patientId;
       }
-
-      await api("/api/appointments", {
-        method: "POST",
-        body: payload
-      });
-      
+      await api("/api/appointments", { method: "POST", body: payload });
       router.push("/dashboard/appointments");
     } catch (e: any) {
-      setError(e.message || "Failed to book appointment");
+      setError(e.message || "Failed to finalize booking.");
       setIsSubmitting(false);
     }
   };
 
-  // Generate next 14 days for calendar
   const today = new Date();
   const calendarDays = Array.from({length: 14}).map((_, i) => {
       const d = new Date(today);
@@ -153,54 +136,62 @@ export default function BookAppointmentPage() {
       return d;
   });
 
-  if (isLoading) return <LoadingSpinner size="lg" className="mt-20" />;
+  if (isLoading) return <div className="h-screen flex items-center justify-center"><LoadingSpinner size="lg" /></div>;
 
   const filteredDoctors = selectedDept 
     ? doctors.filter(d => d.department_id === selectedDept)
     : doctors;
 
   return (
-    <div className="max-w-4xl mx-auto animate-fade-in">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-surface-50">Book an Appointment</h1>
-        <p className="text-surface-400 text-sm mt-1">Schedule a consultation with our specialists.</p>
-      </div>
+    <div className="max-w-5xl mx-auto space-y-10 animate-fade-in text-surface-900 pb-20">
+      <header>
+        <h1 className="text-4xl font-black tracking-tight text-surface-950">Schedule Consultation</h1>
+        <p className="text-surface-500 font-medium text-lg mt-1">Select a specialist and preferred time slot.</p>
+      </header>
 
-      {error && <div className="mb-4 p-3 bg-danger-500/10 text-danger-400 rounded-xl">{error}</div>}
+      {error && (
+        <div className="p-4 bg-danger-50 border border-danger-100 text-danger-700 rounded-2xl font-bold flex items-center gap-3">
+           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+           {error}
+        </div>
+      )}
 
-      {/* Progress Bar */}
-      <div className="flex items-center gap-2 mb-8">
+      {/* stepper */}
+      <div className="flex items-center gap-4">
         {[1, 2, 3].map(s => (
-          <div key={s} className="flex-1 flex flex-col gap-2">
-            <div className={`h-2 rounded-full transition-all duration-300 ${step >= s ? 'bg-primary-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'bg-surface-800'}`} />
-            <span className={`text-xs font-medium ${step >= s ? 'text-primary-400' : 'text-surface-500'}`}>
-              {s === 1 ? 'Select Doctor' : s === 2 ? 'Choose Time' : 'Confirm'}
+          <div key={s} className="flex-1 space-y-2">
+            <div className={`h-1.5 rounded-full transition-all duration-500 ${step >= s ? 'bg-primary-600 shadow-sm' : 'bg-surface-200'}`} />
+            <span className={`text-[10px] font-black uppercase tracking-widest ${step >= s ? 'text-primary-600' : 'text-surface-400'}`}>
+              {s === 1 ? 'Specialist' : s === 2 ? 'Schedule' : 'Confirm'}
             </span>
           </div>
         ))}
       </div>
 
-      <div className="glass rounded-2xl p-6">
+      <div className="glass p-8 bg-white overflow-hidden">
         {step === 1 && (
-          <div className="space-y-6 animate-slide-up">
+          <div className="space-y-8 animate-slide-up">
             {(currentUser?.role === 'admin' || currentUser?.role === 'receptionist') && (
-               <div className="mb-6 p-4 bg-surface-900/50 rounded-xl border border-surface-700/50">
-                  <label className="block text-sm font-medium text-surface-300 mb-2">Select Patient (Receptionist/Admin Mode)</label>
-                  <select
-                    className="w-full rounded-xl px-4 py-3 bg-surface-900 text-surface-100 border border-surface-700 focus:border-primary-500 outline-none"
-                    value={patientId}
-                    onChange={(e) => setPatientId(e.target.value)}
-                  >
-                    <option value="">-- Choose Patient --</option>
-                    {patients.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-                  </select>
+               <div className="p-6 bg-primary-50 rounded-2xl border border-primary-100 flex items-center gap-6">
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-2xl shadow-sm">🆔</div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-black text-primary-700 uppercase tracking-widest mb-2">Assign Patient</label>
+                    <select
+                      className="w-full h-12 rounded-xl px-4 bg-white border border-primary-100 text-surface-900 font-bold focus:ring-2 focus:ring-primary-500/20 outline-none"
+                      value={patientId}
+                      onChange={(e) => setPatientId(e.target.value)}
+                    >
+                      <option value="">Select a registered patient...</option>
+                      {patients.map(p => <option key={p.id} value={p.id}>{p.full_name} ({p.id.split('-')[0]})</option>)}
+                    </select>
+                  </div>
                </div>
             )}
             
-            <div className="flex gap-2 overflow-x-auto pb-4 custom-scrollbar">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
               <button 
                  onClick={() => setSelectedDept(null)}
-                 className={`px-4 py-2 rounded-xl whitespace-nowrap text-sm font-medium transition-all ${!selectedDept ? 'bg-primary-500 text-white shadow-lg' : 'bg-surface-800 text-surface-300 hover:bg-surface-700'}`}
+                 className={`px-6 py-2.5 rounded-xl whitespace-nowrap text-sm font-black transition-all ${!selectedDept ? 'bg-primary-600 text-white shadow-lg' : 'bg-surface-50 text-surface-500 hover:bg-surface-100 border border-surface-100'}`}
               >
                 All Departments
               </button>
@@ -208,7 +199,7 @@ export default function BookAppointmentPage() {
                 <button 
                   key={dept.id}
                   onClick={() => setSelectedDept(dept.id)}
-                  className={`px-4 py-2 rounded-xl whitespace-nowrap text-sm font-medium transition-all ${selectedDept === dept.id ? 'bg-primary-500 text-white shadow-lg' : 'bg-surface-800 text-surface-300 hover:bg-surface-700'}`}
+                  className={`px-6 py-2.5 rounded-xl whitespace-nowrap text-sm font-black transition-all ${selectedDept === dept.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-surface-50 text-surface-500 hover:bg-surface-100 border border-surface-100'}`}
                 >
                   {dept.name}
                 </button>
@@ -220,102 +211,118 @@ export default function BookAppointmentPage() {
                 <div 
                   key={doc.id}
                   onClick={() => { setSelectedDoctor(doc); setStep(2); }}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 group ${selectedDoctor?.id === doc.id ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700/50 bg-surface-900/50 hover:border-surface-600'}`}
+                  className={`p-6 rounded-[2rem] border-2 cursor-pointer transition-all duration-300 group ${selectedDoctor?.id === doc.id ? 'border-primary-500 bg-primary-50/30' : 'border-surface-100 bg-surface-50/50 hover:border-primary-200 hover:bg-white hover:shadow-xl hover:shadow-primary-500/5'}`}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-surface-800 to-surface-900 flex items-center justify-center text-xl shadow-inner border border-surface-700 group-hover:border-primary-500/30">
-                      👨‍⚕️
-                    </div>
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-3xl shadow-sm group-hover:scale-105 transition-transform">🩺</div>
                     <div>
-                      <h4 className="font-semibold text-surface-100">{getDoctorName(doc.user_id)}</h4>
-                      <p className="text-primary-400 text-xs font-medium">{doc.specialization || "General"}</p>
-                      <p className="text-surface-500 text-xs mt-0.5">{getDeptName(doc.department_id)} • {doc.consultation_duration_minutes} min slots</p>
+                      <h4 className="font-black text-surface-950 text-lg group-hover:text-primary-600 transition-colors uppercase tracking-tight">{getDoctorName(doc.user_id)}</h4>
+                      <p className="text-primary-600 text-xs font-black uppercase tracking-widest">{doc.specialization || "General Medicine"}</p>
+                      <p className="text-surface-400 text-[10px] font-black uppercase tracking-widest mt-1 italic">{getDeptName(doc.department_id)} • {doc.consultation_duration_minutes}m Slots</p>
                     </div>
                   </div>
                 </div>
               ))}
-              {filteredDoctors.length === 0 && (
-                 <p className="text-surface-400 py-8 text-center col-span-full">No available doctors found in this department.</p>
-              )}
             </div>
           </div>
         )}
 
         {step === 2 && selectedDoctor && (
-          <div className="space-y-6 animate-slide-up">
-            <h3 className="text-lg font-medium text-surface-200">Select Date</h3>
-            <div className="grid grid-cols-7 gap-2">
-               {calendarDays.map((date, i) => {
-                  const dateStr = date.toISOString().split('T')[0];
-                  const isSelected = selectedDate === dateStr;
-                  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                  
-                  return (
-                    <button
-                      key={dateStr}
-                      disabled={isWeekend}
-                      onClick={() => setSelectedDate(dateStr)}
-                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${isWeekend ? 'opacity-30 cursor-not-allowed bg-surface-900 border-surface-800' : isSelected ? 'bg-primary-500 text-white border-primary-400 shadow-[0_0_15px_rgba(6,182,212,0.3)] transform scale-105' : 'bg-surface-800 text-surface-300 border-surface-700 hover:bg-surface-700'}`}
-                    >
-                       <span className="text-xs uppercase font-medium">{date.toLocaleDateString("en-US", {weekday: 'short'})}</span>
-                       <span className={`text-xl font-bold mt-1 ${isSelected ? 'text-white' : 'text-surface-100'}`}>{date.getDate()}</span>
-                    </button>
-                  )
-               })}
-            </div>
+          <div className="space-y-10 animate-slide-up">
+            <header className="flex justify-between items-center bg-surface-50 p-6 rounded-3xl border border-surface-100">
+               <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-surface-400">Booking for</p>
+                  <p className="text-xl font-black text-surface-950">{getDoctorName(selectedDoctor.user_id)}</p>
+               </div>
+               <Button variant="secondary" onClick={() => setStep(1)} size="sm">Change Doctor</Button>
+            </header>
+
+            <section>
+                <h3 className="text-xs font-black text-surface-400 uppercase tracking-[0.2em] mb-6 pl-1">Available Dates</h3>
+                <div className="grid grid-cols-7 gap-3">
+                   {calendarDays.map((date, i) => {
+                      const dateStr = date.toISOString().split('T')[0];
+                      const isSelected = selectedDate === dateStr;
+                      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                      return (
+                        <button
+                          key={dateStr}
+                          disabled={isWeekend}
+                          onClick={() => setSelectedDate(dateStr)}
+                          className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all group ${isWeekend ? 'opacity-20 cursor-not-allowed bg-surface-50' : isSelected ? 'bg-primary-600 text-white border-primary-600 shadow-xl shadow-primary-500/30' : 'bg-white text-surface-950 border-surface-100 hover:border-primary-300'}`}
+                        >
+                           <span className={`text-[10px] font-black uppercase tracking-widest ${isSelected ? 'text-primary-100' : 'text-surface-400'}`}>{date.toLocaleDateString("en-US", {weekday: 'short'})}</span>
+                           <span className="text-2xl font-black mt-1">{date.getDate()}</span>
+                        </button>
+                      )
+                   })}
+                </div>
+            </section>
 
             {selectedDate && (
-               <div className="pt-6 border-t border-surface-800">
-                 <h3 className="text-lg font-medium text-surface-200 mb-4">Available Times</h3>
-                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+               <section className="animate-slide-up">
+                 <h3 className="text-xs font-black text-surface-400 uppercase tracking-[0.2em] mb-6 pl-1">Preferred Time Slot</h3>
+                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
                     {generateTimeSlots(selectedDoctor.consultation_duration_minutes).map(time => (
                        <button
                          key={time}
                          onClick={() => setSelectedTime(time)}
-                         className={`py-2 rounded-lg text-sm font-medium transition-all border ${selectedTime === time ? 'bg-accent-500 text-white border-accent-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] scale-105' : 'bg-surface-900 text-surface-300 border-surface-700/50 hover:bg-surface-800 hover:text-surface-200'}`}
+                         className={`py-3 rounded-xl text-sm font-black transition-all border-2 ${selectedTime === time ? 'bg-primary-600 text-white border-primary-600 shadow-lg' : 'bg-white text-surface-500 border-surface-100 hover:border-primary-300'}`}
                        >
                          {time.slice(0, 5)}
                        </button>
                     ))}
                  </div>
-               </div>
+               </section>
             )}
             
-            <div className="flex justify-between pt-6">
-              <Button variant="secondary" onClick={() => { setStep(1); setSelectedTime(""); setSelectedDate(""); }}>Back</Button>
-              <Button onClick={() => setStep(3)} disabled={!selectedDate || !selectedTime}>Continue</Button>
+            <div className="flex justify-end pt-6">
+              <Button onClick={() => setStep(3)} disabled={!selectedDate || !selectedTime} size="lg" className="px-10 shadow-xl shadow-primary-500/20">Finalize Details</Button>
             </div>
           </div>
         )}
 
         {step === 3 && selectedDoctor && (
-          <div className="animate-slide-up max-w-md mx-auto text-center py-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 mx-auto flex items-center justify-center shadow-[0_0_30px_rgba(6,182,212,0.3)] mb-6">
-               <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+          <div className="animate-scale-in max-w-lg mx-auto text-center py-10 space-y-10">
+            <div className="w-24 h-24 rounded-[2rem] bg-primary-600 text-white mx-auto flex items-center justify-center shadow-2xl shadow-primary-500/30 relative">
+               <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                </svg>
             </div>
-            <h2 className="text-xl font-bold text-surface-50 mb-2">Confirm Booking</h2>
-            <div className="bg-surface-900/50 rounded-2xl p-6 text-left border border-surface-800 mb-8 space-y-4">
-               <div>
-                  <p className="text-xs text-surface-500 uppercase font-bold tracking-wider">Physician</p>
-                  <p className="text-surface-100 font-medium">{getDoctorName(selectedDoctor.user_id)}</p>
-               </div>
-               <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <h2 className="text-3xl font-black text-surface-950 tracking-tight">Review Booking</h2>
+                <p className="text-surface-500 font-medium">Verify your clinical consultation details.</p>
+            </div>
+            
+            <div className="bg-surface-50 rounded-[2.5rem] p-10 text-left border-2 border-surface-100 space-y-8">
+               <div className="flex items-center gap-6">
+                  <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm">👨‍⚕️</div>
                   <div>
-                    <p className="text-xs text-surface-500 uppercase font-bold tracking-wider">Date</p>
-                    <p className="text-surface-100 font-medium">{new Date(selectedDate).toLocaleDateString()}</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-surface-400">Specialist Physician</p>
+                    <p className="text-xl font-black text-surface-950 uppercase tracking-tight">{getDoctorName(selectedDoctor.user_id)}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-surface-500 uppercase font-bold tracking-wider">Time</p>
-                    <p className="text-surface-100 font-medium">{selectedTime.slice(0, 5)}</p>
+               </div>
+               <div className="grid grid-cols-2 gap-8 pt-8 border-t border-surface-200">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-lg shadow-sm">📅</div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-surface-400">Date</p>
+                        <p className="text-surface-900 font-black">{new Date(selectedDate).toLocaleDateString('en-US', {month: 'long', day: 'numeric'})}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-lg shadow-sm">⏱️</div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-surface-400">Time</p>
+                        <p className="text-surface-900 font-black">{selectedTime.slice(0, 5)}</p>
+                    </div>
                   </div>
                </div>
             </div>
             
-            <div className="flex gap-4 justify-center">
-              <Button variant="secondary" onClick={() => setStep(2)}>Go Back</Button>
-              <Button onClick={handleBooking} isLoading={isSubmitting}>Confirm & Book</Button>
+            <div className="flex gap-4">
+              <Button variant="secondary" onClick={() => setStep(2)} className="flex-1 py-4">Revision</Button>
+              <Button onClick={handleBooking} isLoading={isSubmitting} className="flex-1 py-4 shadow-xl shadow-primary-500/30">Confirm Schedule</Button>
             </div>
           </div>
         )}

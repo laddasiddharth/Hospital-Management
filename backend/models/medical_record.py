@@ -27,8 +27,11 @@ class MedicalRecord(Base):
     blood_pressure_sys: Mapped[int | None] = mapped_column(nullable=True)
     blood_pressure_dia: Mapped[int | None] = mapped_column(nullable=True)
     heart_rate_bpm: Mapped[int | None] = mapped_column(nullable=True)
+    respiratory_rate: Mapped[int | None] = mapped_column(nullable=True)
+    spo2_percent: Mapped[int | None] = mapped_column(nullable=True)
     temperature_celsius: Mapped[float | None] = mapped_column(Float, nullable=True)
     weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Clinical Notes
     symptoms: Mapped[str] = mapped_column(Text, nullable=False)

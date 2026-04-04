@@ -6,8 +6,11 @@ class MedicalRecordBase(BaseModel):
     blood_pressure_sys: int | None = None
     blood_pressure_dia: int | None = None
     heart_rate_bpm: int | None = None
+    respiratory_rate: int | None = None
+    spo2_percent: int | None = None
     temperature_celsius: float | None = None
     weight_kg: float | None = None
+    height_cm: float | None = None
 
     symptoms: str
     diagnosis: str | None = None

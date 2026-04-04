@@ -61,7 +61,7 @@ export default function DoctorsPage() {
         setUsers(usersData);
       }
     } catch {
-      setError("Failed to load data.");
+      setError("Failed to synchronize physician records.");
     } finally {
       setIsLoading(false);
     }
@@ -89,132 +89,139 @@ export default function DoctorsPage() {
       setForm({ user_id: "", department_id: "", specialization: "", qualification: "", experience_years: 0 });
       fetchData();
     } catch (err: any) {
-      setError(err.message || "Failed to create doctor profile");
+      setError(err.message || "Failed to initialize physician profile.");
     }
   };
 
   const getDoctorName = (userId: string) => {
     const u = users.find(u => u.id === userId);
-    return u ? `Dr. ${u.full_name}` : "Unknown Doctor";
+    return u ? `Dr. ${u.full_name}` : "Clinical Specialist";
   };
   
   const getDeptName = (deptId: string | null) => {
-    if (!deptId) return "Unassigned";
+    if (!deptId) return "General Outpatient";
     const d = departments.find(d => d.id === deptId);
-    return d ? d.name : "Unknown";
+    return d ? d.name : "Unknown Department";
   };
 
-  if (isLoading) return <LoadingSpinner size="lg" className="mt-20" />;
+  if (isLoading) return <div className="h-screen flex items-center justify-center bg-app"><LoadingSpinner size="lg" /></div>;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="space-y-10 animate-fade-in text-surface-900 pb-20">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-bold text-surface-50">Doctors Directory</h1>
-          <p className="text-surface-400 text-sm mt-1">Hospital physicians and specialists.</p>
+          <h1 className="text-3xl font-black tracking-tight text-surface-950">Physician Directory</h1>
+          <p className="text-surface-500 font-medium text-lg mt-1">Access the hierarchy of specialized medical personnel.</p>
         </div>
         {currentUser?.role === "admin" && (
-          <Button onClick={() => setIsModalOpen(true)}>+ Add Doctor Profile</Button>
+          <Button onClick={() => setIsModalOpen(true)} className="shadow-lg shadow-primary-500/20 px-8">+ Provision Profile</Button>
         )}
-      </div>
+      </header>
 
-      {error && <div className="p-3 bg-danger-500/10 text-danger-400 rounded-xl">{error}</div>}
+      {error && (
+        <div className="p-4 bg-danger-50 border border-danger-100 text-danger-700 rounded-2xl font-bold">
+           {error}
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {doctors.map((doc, i) => (
-          <div key={doc.id} className={`glass rounded-2xl p-6 hover:border-primary-500/30 transition-all duration-300 animate-slide-up stagger-${i+1}`} style={{opacity: 0, animationFillMode: "forwards"}}>
-            <div className="flex items-start gap-4 mb-4">
-               <div className="w-12 h-12 rounded-full bg-surface-800 flex items-center justify-center text-xl shrink-0">
+          <div key={doc.id} className="glass p-8 group hover:border-primary-400 transition-all duration-300 transform hover:-translate-y-1 bg-white">
+            <div className="flex items-center gap-6 mb-8">
+               <div className="w-16 h-16 rounded-2xl bg-primary-50 text-3xl flex items-center justify-center grayscale group-hover:grayscale-0 transition-all shadow-sm">
                  👨‍⚕️
                </div>
                <div>
-                 <h3 className="font-semibold text-lg text-surface-100">{getDoctorName(doc.user_id)}</h3>
-                 <p className="text-primary-400 text-sm font-medium">{doc.specialization || "General"}</p>
-                 <p className="text-surface-400 text-xs mt-0.5">{getDeptName(doc.department_id)}</p>
+                 <h3 className="font-black text-xl text-surface-950 group-hover:text-primary-600 transition-colors uppercase tracking-tight">{getDoctorName(doc.user_id)}</h3>
+                 <p className="text-primary-600 text-[10px] font-black uppercase tracking-widest">{doc.specialization || "General Medicine"}</p>
+                 <p className="text-surface-400 text-[10px] font-black uppercase tracking-widest mt-1 italic">{getDeptName(doc.department_id)}</p>
                </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-2 text-sm mt-4 p-3 bg-surface-900/50 rounded-xl">
-               <div>
-                  <p className="text-surface-500 text-xs">Experience</p>
-                  <p className="font-medium text-surface-200">{doc.experience_years} Years</p>
+            <div className="grid grid-cols-2 gap-4">
+               <div className="p-4 bg-surface-50 rounded-2xl border border-surface-100">
+                  <p className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1">Clinical Exp</p>
+                  <p className="font-black text-surface-950">{doc.experience_years} Years</p>
                </div>
-               <div>
-                  <p className="text-surface-500 text-xs">Status</p>
-                  <p className={`font-medium ${doc.is_available ? 'text-success-400' : 'text-danger-400'}`}>
-                    {doc.is_available ? 'Available' : 'Unavailable'}
+               <div className={`p-4 rounded-2xl border-2 flex flex-col justify-center ${doc.is_available ? 'bg-emerald-50 border-emerald-100' : 'bg-surface-50 border-surface-100'}`}>
+                  <p className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1">Session Availability</p>
+                  <p className={`font-black uppercase text-xs ${doc.is_available ? 'text-emerald-700' : 'text-surface-400 italic'}`}>
+                    {doc.is_available ? 'Online' : 'Unavailable'}
                   </p>
                </div>
             </div>
           </div>
         ))}
-        {doctors.length === 0 && !isLoading && (
-          <div className="col-span-full py-12 text-center border border-dashed border-surface-700/50 rounded-2xl">
-             <p className="text-surface-400">No doctors registered yet.</p>
+        {doctors.length === 0 && (
+          <div className="col-span-full py-24 text-center glass bg-white/50 border-dashed border-surface-200">
+             <div className="text-5xl mb-4 grayscale opacity-30">🩺</div>
+             <p className="text-surface-400 font-bold uppercase tracking-widest text-xs italic">No physicians currently provisioned</p>
           </div>
         )}
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="glass rounded-2xl p-6 w-full max-w-md animate-scale-in">
-            <h2 className="text-xl font-bold text-surface-50 mb-4">Add Doctor Profile</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-surface-950/40 backdrop-blur-md animate-fade-in">
+          <div className="glass p-10 w-full max-w-lg bg-white shadow-2xl relative overflow-hidden">
+            <header className="mb-8 flex justify-between items-start">
+                <div>
+                   <h2 className="text-3xl font-black text-surface-950 tracking-tight">Provision Physician</h2>
+                   <p className="text-surface-500 font-medium mt-1">Create a new professional profile.</p>
+                </div>
+                <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 rounded-full bg-surface-50 hover:bg-surface-100 flex items-center justify-center transition-colors">
+                    <svg className="w-5 h-5 text-surface-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </header>
             
             {users.length === 0 ? (
-               <div className="p-4 bg-warning-500/10 border border-warning-500/30 rounded-xl mb-4">
-                  <p className="text-warning-400 text-sm">You must create a User account with the 'doctor' role first.</p>
+               <div className="p-6 bg-amber-50 border border-amber-100 rounded-3xl mb-8">
+                  <p className="text-amber-800 text-sm font-bold leading-relaxed">No users found with the 'doctor' role. Please register a Doctor account before provisioning a profile.</p>
                </div>
             ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-surface-300">Select Doctor User</label>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-surface-400 uppercase tracking-widest pl-1">Associate Account</label>
                     <select
-                      className="w-full rounded-xl px-4 py-3 bg-surface-900/80 text-surface-100 border border-surface-700/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                      className="w-full h-14 rounded-2xl px-5 bg-surface-50 border border-surface-200 text-surface-900 font-bold focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
                       value={form.user_id}
                       onChange={e => setForm({...form, user_id: e.target.value})}
                       required
                     >
-                      <option value="">-- Choose User --</option>
+                      <option value="">Select Doctor User...</option>
                       {users.map(u => <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>)}
                     </select>
                   </div>
                   
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-surface-300">Select Department</label>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-surface-400 uppercase tracking-widest pl-1">Placement Department</label>
                     <select
-                      className="w-full rounded-xl px-4 py-3 bg-surface-900/80 text-surface-100 border border-surface-700/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                      className="w-full h-14 rounded-2xl px-5 bg-surface-50 border border-surface-200 text-surface-900 font-bold focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
                       value={form.department_id}
                       onChange={e => setForm({...form, department_id: e.target.value})}
                     >
-                      <option value="">-- General / None --</option>
+                      <option value="">General OPD / None</option>
                       {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                   </div>
     
                   <Input
-                    label="Specialization"
+                    label="Specialization Field"
                     value={form.specialization}
                     onChange={(e) => setForm({ ...form, specialization: e.target.value })}
-                    placeholder="e.g. Neurologist"
+                    placeholder="e.g. Cardiologist"
                   />
                   <Input
-                    label="Experience (Years)"
+                    label="Years of Experience"
                     type="number"
                     value={form.experience_years}
                     onChange={(e) => setForm({ ...form, experience_years: parseInt(e.target.value) || 0 })}
                     min={0}
                   />
-                  <div className="flex gap-3 justify-end mt-6">
-                    <Button variant="ghost" onClick={() => setIsModalOpen(false)} type="button">Cancel</Button>
-                    <Button type="submit">Create</Button>
+                  <div className="flex gap-4 pt-6">
+                    <Button variant="secondary" onClick={() => setIsModalOpen(false)} type="button" className="flex-1 py-4">Dismiss</Button>
+                    <Button type="submit" className="flex-1 py-4 shadow-xl shadow-primary-500/20">Finalize Profile</Button>
                   </div>
                 </form>
-            )}
-            
-            {users.length === 0 && (
-                <div className="flex justify-end mt-4">
-                  <Button variant="ghost" onClick={() => setIsModalOpen(false)} type="button">Close</Button>
-                </div>
             )}
           </div>
         </div>

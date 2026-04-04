@@ -1,39 +1,44 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
-interface TokenQueue {
+interface Appointment {
   id: string;
-  token_number: string;
   patient_id: string;
   doctor_id: string;
-  appointment_id: string | null;
-  status: string;
+  patient: { full_name: string; email: string };
 }
 
 export default function ConsultationRoom() {
-  const params = useParams();
+  const { id } = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
-  const tokenId = params.id as string;
-
-  const [token, setToken] = useState<TokenQueue | null>(null);
+  const tokenId = searchParams.get("token_id");
+  
+  const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
-  const [form, setForm] = useState({
+  // Vitals State
+  const [vitals, setVitals] = useState({
     blood_pressure_sys: "",
     blood_pressure_dia: "",
     heart_rate_bpm: "",
+    respiratory_rate: "",
+    spo2_percent: "",
     temperature_celsius: "",
     weight_kg: "",
+    height_cm: "",
+  });
+
+  const [clinical, setClinical] = useState({
     symptoms: "",
     diagnosis: "",
     prescription_notes: "",
@@ -41,179 +46,158 @@ export default function ConsultationRoom() {
   });
 
   useEffect(() => {
-    const fetchToken = async () => {
+    async function fetchData() {
       try {
-        const data = await api<TokenQueue>(`/api/queue/${tokenId}`);
-        setToken(data);
-      } catch (e: any) {
-        setError("Patient token not found. " + e.message);
+        const data = await api<Appointment>(`/api/appointments/${id}`);
+        setAppointment(data);
+      } catch (err) {
+        console.error("Failed to fetch appointment:", err);
       } finally {
         setIsLoading(false);
       }
-    };
-    if (tokenId) fetchToken();
-  }, [tokenId]);
+    }
+    fetchData();
+  }, [id]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!token) return;
-    
-    setIsSubmitting(true);
-    setError("");
+  const calculateBMI = () => {
+    const w = parseFloat(vitals.weight_kg);
+    const h = parseFloat(vitals.height_cm) / 100;
+    if (w > 0 && h > 0) return (w / (h * h)).toFixed(1);
+    return null;
+  };
+
+  const handleSave = async () => {
+    if (!appointment) return;
+    setIsSaving(true);
 
     try {
-      const payload = {
-         symptoms: form.symptoms,
-         diagnosis: form.diagnosis || null,
-         prescription_notes: form.prescription_notes || null,
-         lab_tests_requested: form.lab_tests_requested || null,
-         blood_pressure_sys: form.blood_pressure_sys ? parseInt(form.blood_pressure_sys) : null,
-         blood_pressure_dia: form.blood_pressure_dia ? parseInt(form.blood_pressure_dia) : null,
-         heart_rate_bpm: form.heart_rate_bpm ? parseInt(form.heart_rate_bpm) : null,
-         temperature_celsius: form.temperature_celsius ? parseFloat(form.temperature_celsius) : null,
-         weight_kg: form.weight_kg ? parseFloat(form.weight_kg) : null,
-         appointment_id: token.appointment_id || null, // Will be null if it's a pure walk-in
-         patient_id: token.patient_id,
-         doctor_id: token.doctor_id,
-         token_id: token.id
-      };
-
       await api("/api/records", {
         method: "POST",
-        body: payload
+        body: {
+          appointment_id: appointment.id,
+          patient_id: appointment.patient_id,
+          doctor_id: appointment.doctor_id,
+          token_id: tokenId || undefined,
+          ...vitals,
+          ...clinical,
+        },
       });
-      
-      // Navigate back to queue after concluding the consultation
-      router.push("/dashboard/queue");
-    } catch (e: any) {
-       setError("Failed to save medical record: " + e.message);
-       setIsSubmitting(false);
+      setIsSaved(true);
+      setTimeout(() => router.push("/dashboard/queue"), 2000);
+    } catch (err) {
+      alert("Failed to save record. Please check inputs.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  if (isLoading) return <LoadingSpinner size="lg" className="mt-20" />;
+  if (isLoading) return <div className="h-screen flex items-center justify-center"><LoadingSpinner size="lg" /></div>;
+  if (!appointment) return <div className="p-8 text-center text-surface-500">Appointment not found.</div>;
 
   return (
-    <div className="max-w-5xl mx-auto animate-fade-in">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-8 max-w-6xl mx-auto space-y-8 animate-fade-in text-surface-900">
+      <header className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-surface-50">Consultation Room</h1>
-          <p className="text-surface-400 text-sm mt-1">EHR recording for Token <strong className="text-primary-400">{token?.token_number}</strong></p>
+          <h1 className="text-3xl font-black tracking-tight text-surface-950">Consultation Room</h1>
+          <p className="text-surface-500 font-medium">Patient: <span className="text-primary-600">{appointment.patient.full_name}</span></p>
         </div>
-        <Button variant="ghost" onClick={() => router.back()}>Cancel & Go Back</Button>
-      </div>
+        <div className="flex gap-4">
+          <Button variant="secondary" onClick={() => router.back()}>Cancel</Button>
+          {!isSaved && (
+            <Button onClick={handleSave} isLoading={isSaving} className="px-8 shadow-lg shadow-primary-500/20">
+              Save Immutable Record
+            </Button>
+          )}
+        </div>
+      </header>
 
-      {error && <div className="mb-6 p-4 bg-danger-500/10 border border-danger-500/30 text-danger-400 rounded-xl">{error}</div>}
+      {isSaved && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-6 rounded-2xl animate-scale-in flex items-center gap-4">
+           <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+           <p className="font-bold text-lg">Record Saved Permanently. Closing consultation...</p>
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         {/* Left Side: Vitals & Details */}
-         <div className="space-y-6">
-            <div className="glass rounded-2xl p-6 border border-surface-800">
-               <h2 className="text-lg font-bold text-surface-200 mb-4 border-b border-surface-800 pb-2">Patient Vitals</h2>
-               <div className="grid grid-cols-2 gap-4">
-                  <Input 
-                    label="BP Systolic" 
-                    type="number" 
-                    placeholder="e.g. 120"
-                    value={form.blood_pressure_sys}
-                    onChange={(e) => setForm({...form, blood_pressure_sys: e.target.value})}
-                  />
-                  <Input 
-                    label="BP Diastolic" 
-                    type="number" 
-                    placeholder="e.g. 80"
-                    value={form.blood_pressure_dia}
-                    onChange={(e) => setForm({...form, blood_pressure_dia: e.target.value})}
-                  />
-                  <Input 
-                    label="Heart Rate" 
-                    type="number" 
-                    placeholder="BPM"
-                    value={form.heart_rate_bpm}
-                    onChange={(e) => setForm({...form, heart_rate_bpm: e.target.value})}
-                  />
-                  <Input 
-                    label="Temp. (°C)" 
-                    type="number" 
-                    step="0.1"
-                    placeholder="e.g. 37.0"
-                    value={form.temperature_celsius}
-                    onChange={(e) => setForm({...form, temperature_celsius: e.target.value})}
-                  />
-                  <div className="col-span-2">
-                     <Input 
-                       label="Weight (kg)" 
-                       type="number" 
-                       step="0.1"
-                       placeholder="e.g. 70.5"
-                       value={form.weight_kg}
-                       onChange={(e) => setForm({...form, weight_kg: e.target.value})}
-                     />
-                  </div>
-               </div>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left: Vitals Panel */}
+        <section className="lg:col-span-1 space-y-6">
+          <div className="glass p-6 space-y-6">
+            <h2 className="text-xl font-bold flex items-center gap-2 text-surface-950">
+              <svg className="w-5 h-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+              Patient Vitals
+            </h2>
             
-            <div className="glass rounded-xl p-4 bg-warning-500/10 border border-warning-500/20">
-               <p className="text-xs text-warning-400 font-medium">
-                  ⚠️ Note: Saving this record is immutable. You cannot edit it after completion. Please verify all details.
-               </p>
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="BP (Sys)" type="number" value={vitals.blood_pressure_sys} onChange={e => setVitals({...vitals, blood_pressure_sys: e.target.value})} disabled={isSaved} />
+              <Input label="BP (Dia)" type="number" value={vitals.blood_pressure_dia} onChange={e => setVitals({...vitals, blood_pressure_dia: e.target.value})} disabled={isSaved} />
+              <Input label="Heart Rate" type="number" value={vitals.heart_rate_bpm} onChange={e => setVitals({...vitals, heart_rate_bpm: e.target.value})} disabled={isSaved} />
+              <Input label="Resp. Rate" type="number" value={vitals.respiratory_rate} onChange={e => setVitals({...vitals, respiratory_rate: e.target.value})} disabled={isSaved} />
+              <Input label="SpO2 (%)" type="number" value={vitals.spo2_percent} onChange={e => setVitals({...vitals, spo2_percent: e.target.value})} disabled={isSaved} />
+              <Input label="Temp (°C)" type="number" step="0.1" value={vitals.temperature_celsius} onChange={e => setVitals({...vitals, temperature_celsius: e.target.value})} disabled={isSaved} />
+              <Input label="Height (cm)" type="number" value={vitals.height_cm} onChange={e => setVitals({...vitals, height_cm: e.target.value})} disabled={isSaved} />
+              <Input label="Weight (kg)" type="number" value={vitals.weight_kg} onChange={e => setVitals({...vitals, weight_kg: e.target.value})} disabled={isSaved} />
             </div>
-         </div>
 
-         {/* Right Side: Clinical Notes */}
-         <div className="lg:col-span-2 space-y-6">
-            <div className="glass rounded-2xl p-6 border border-surface-800 space-y-5">
-               <h2 className="text-lg font-bold text-surface-200 mb-2 border-b border-surface-800 pb-2">Clinical Notes & Prescription</h2>
-               
-               <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-surface-300">Symptoms *</label>
-                  <textarea 
-                     className="w-full h-24 rounded-xl px-4 py-3 bg-surface-900/80 text-surface-100 border border-surface-700/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 resize-none outline-none"
-                     placeholder="Chief complaints..."
-                     required
-                     value={form.symptoms}
-                     onChange={(e) => setForm({...form, symptoms: e.target.value})}
-                  />
-               </div>
+            {calculateBMI() && (
+              <div className="bg-primary-50 p-4 rounded-xl border border-primary-100 flex justify-between items-center">
+                <span className="font-bold text-primary-800">Calculated BMI</span>
+                <span className="text-2xl font-black text-primary-600 font-mono">{calculateBMI()}</span>
+              </div>
+            )}
+          </div>
+        </section>
 
-               <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-surface-300">Diagnosis</label>
-                  <input 
-                     className="w-full rounded-xl px-4 py-3 bg-surface-900/80 text-surface-100 border border-surface-700/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
-                     placeholder="Primary diagnosis..."
-                     value={form.diagnosis}
-                     onChange={(e) => setForm({...form, diagnosis: e.target.value})}
-                  />
-               </div>
+        {/* Right: Clinical Information */}
+        <section className="lg:col-span-2 space-y-6">
+          <div className="glass p-8 space-y-6 flex flex-col h-full">
+            <h2 className="text-xl font-bold flex items-center gap-2 text-surface-950">
+              <svg className="w-5 h-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              Clinical Records
+            </h2>
 
-               <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-surface-300">Prescription / Medication Details</label>
-                  <textarea 
-                     className="w-full h-32 rounded-xl px-4 py-3 bg-surface-900/80 text-surface-100 border border-surface-700/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 resize-none outline-none font-mono text-sm"
-                     placeholder="Rx: Paracetamol 500mg 1-0-1 for 3 days..."
-                     value={form.prescription_notes}
-                     onChange={(e) => setForm({...form, prescription_notes: e.target.value})}
-                  />
-               </div>
+            <div className="space-y-6 flex-1">
+              <div>
+                <label className="block text-sm font-bold text-surface-700 mb-2">Chief Complaints / Symptoms</label>
+                <textarea 
+                  className="w-full h-32 rounded-xl bg-surface-50 border border-surface-200 p-4 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                  value={clinical.symptoms}
+                  onChange={e => setClinical({...clinical, symptoms: e.target.value})}
+                  disabled={isSaved}
+                  placeholder="Describe patient symptoms..."
+                />
+              </div>
 
-               <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-surface-300">Lab Tests Requested</label>
-                  <input 
-                     className="w-full rounded-xl px-4 py-3 bg-surface-900/80 text-surface-100 border border-surface-700/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
-                     placeholder="e.g. CBC, Lipid Profile"
-                     value={form.lab_tests_requested}
-                     onChange={(e) => setForm({...form, lab_tests_requested: e.target.value})}
-                  />
-               </div>
+              <div className="grid grid-cols-2 gap-6">
+                 <div>
+                    <label className="block text-sm font-bold text-surface-700 mb-2">Diagnosis</label>
+                    <textarea 
+                      className="w-full h-40 rounded-xl bg-surface-50 border border-surface-200 p-4 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                      value={clinical.diagnosis}
+                      onChange={e => setClinical({...clinical, diagnosis: e.target.value})}
+                      disabled={isSaved}
+                      placeholder="Enter clinical diagnosis..."
+                    />
+                 </div>
+                 <div>
+                    <label className="block text-sm font-bold text-surface-700 mb-2">Prescription & Medications</label>
+                    <textarea 
+                      className="w-full h-40 rounded-xl bg-surface-50 border border-surface-200 p-4 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all font-mono text-sm"
+                      value={clinical.prescription_notes}
+                      onChange={e => setClinical({...clinical, prescription_notes: e.target.value})}
+                      disabled={isSaved}
+                      placeholder="List drugs and frequency..."
+                    />
+                 </div>
+              </div>
 
-               <div className="pt-4 flex justify-end">
-                 <Button type="submit" isLoading={isSubmitting} className="min-w-40 py-4 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
-                    Save Record & Complete
-                 </Button>
-               </div>
+              <div>
+                <label className="block text-sm font-bold text-surface-700 mb-2">Laboratory Tests Requested</label>
+                <Input type="text" value={clinical.lab_tests_requested} onChange={e => setClinical({...clinical, lab_tests_requested: e.target.value})} disabled={isSaved} placeholder="Blood Count, MRI, etc." />
+              </div>
             </div>
-         </div>
-      </form>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

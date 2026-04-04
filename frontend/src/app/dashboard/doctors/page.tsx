@@ -175,7 +175,7 @@ export default function DoctorsPage() {
             
             {users.length === 0 ? (
                <div className="p-6 bg-amber-50 border border-amber-100 rounded-3xl mb-8">
-                  <p className="text-amber-800 text-sm font-bold leading-relaxed">No users found with the 'doctor' role. Please register a Doctor account before provisioning a profile.</p>
+                  <p className="text-amber-800 text-sm font-bold leading-relaxed">No users found with the 'doctor' role. Please ask an Admin to go to the <a href="/api/docs" target="_blank" className="underline">Backend API</a> or use Admin tools to register a User account with a 'doctor' role before provisioning a profile here.</p>
                </div>
             ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">

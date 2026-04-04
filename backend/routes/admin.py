@@ -47,9 +47,14 @@ def list_users(
     role: str | None = Query(None),
     is_active: bool | None = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role([UserRole.ADMIN])),
+    current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.RECEPTIONIST, UserRole.DOCTOR, UserRole.PATIENT])),
 ):
-    """List all users with optional role and status filters (Admin only)."""
+    """List all users with optional role and status filters."""
+    # Patients and Doctors can only query for doctors (or themselves/receptionists as needed, but for safe measure:
+    if current_user.role in [UserRole.PATIENT.value, UserRole.DOCTOR.value]:
+        if role != UserRole.DOCTOR.value:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+            
     query = db.query(User)
     if role:
         query = query.filter(User.role == role)

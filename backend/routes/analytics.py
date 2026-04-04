@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 def get_dashboard_analytics(
     days: int = 30,
     db: Session = Depends(get_db),
-    _ = Depends(require_role([UserRole.ADMIN, UserRole.RECEPTIONIST]))
+    _ = Depends(require_role([UserRole.ADMIN, UserRole.RECEPTIONIST, UserRole.DOCTOR]))
 ):
     """
     Get dashboard analytics for the specified number of days.
@@ -86,12 +86,19 @@ def get_dashboard_analytics(
     avg_peak_load = hourly_loads[peak_hour] // days if days > 0 else hourly_loads[peak_hour]
     formatted_peak = f"{peak_hour}:00 {'AM' if peak_hour < 12 else 'PM'} (avg {avg_peak_load} patients)" if valid_tokens > 0 else "N/A"
 
+    active_queue = db.query(TokenQueue).filter(
+        TokenQueue.queue_date == date.today(),
+        TokenQueue.status.in_([TokenStatus.WAITING.value, TokenStatus.CALLED.value])
+    ).count()
+
     return {
         "summary": {
             "avgWaitTimeMinutes": avg_wait_time,
             "noShowRatePercent": no_show_rate,
             "totalTokensProcessed": valid_tokens,
-            "peakHourLabel": formatted_peak
+            "peakHourLabel": formatted_peak,
+            "totalAppointments": total_appointments,
+            "activeQueue": active_queue
         },
         "hourlyData": [{"hour": f"{h}:00", "count": c} for h, c in hourly_loads.items() if (8 <= h <= 20)] # Filter to normal hours
     }

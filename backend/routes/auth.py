@@ -28,9 +28,6 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
         )
 
     user_role = UserRole.PATIENT.value
-    requested_role = request.role.lower()
-    if requested_role in [UserRole.DOCTOR.value, UserRole.RECEPTIONIST.value]:
-        user_role = requested_role
 
     user = User(
         email=request.email,

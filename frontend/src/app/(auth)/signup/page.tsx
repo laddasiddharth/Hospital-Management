@@ -100,21 +100,7 @@ export default function SignupPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4 text-surface-900">
         
-        {/* Role Selector */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-surface-700 pl-0.5">Select Role</label>
-          <div className="grid grid-cols-3 gap-2">
-            {['patient', 'doctor', 'receptionist'].map(role => (
-              <div 
-                key={role} 
-                onClick={() => updateField('role', role)}
-                className={`cursor-pointer px-3 py-2 text-center rounded-xl text-sm font-bold border transition-all ${form.role === role ? 'bg-primary-50 border-primary-500 text-primary-700' : 'bg-surface-50 border-surface-200 text-surface-500 hover:bg-surface-100'}`}
-              >
-                {role.charAt(0).toUpperCase() + role.slice(1)}
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Role Selector hidden, defaults to patient */}
 
         <Input label="Full Name" type="text" placeholder="John Doe" value={form.full_name} onChange={(e) => updateField("full_name", e.target.value)} required />
         <Input label="Email" type="email" placeholder="you@example.com" value={form.email} onChange={(e) => updateField("email", e.target.value)} required />

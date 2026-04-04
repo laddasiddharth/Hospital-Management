@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 
 const roleQuickActions: Record<
   string,
@@ -38,10 +40,41 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
   
+  const [period, setPeriod] = useState<"daily" | "weekly">("daily");
+  const [statsData, setStatsData] = useState<any>(null);
+
+  useEffect(() => {
+    if (!user || user.role === "patient") return;
+    
+    const fetchStats = async () => {
+      try {
+        const days = period === "daily" ? 1 : 7;
+        const res = await api(`/api/analytics/dashboard?days=${days}`);
+        setStatsData(res);
+      } catch (err) {
+        console.error("Failed to fetch dash stats", err);
+      }
+    };
+    fetchStats();
+  }, [user, period]);
+
   if (!user) return null;
 
   const greeting = getGreeting();
   const actions = roleQuickActions[user.role] || roleQuickActions.patient;
+
+  // Dynamic stats override
+  const displayStats = statsData ? [
+    { label: period === "daily" ? "Today's Appointments" : "Weekly Appointments", value: statsData.summary.totalAppointments || "0", icon: "📅", trend: "" },
+    { label: "Active Queue", value: statsData.summary.activeQueue || "0", icon: "📋", trend: "" },
+    { label: "Avg. Wait Time", value: `${statsData.summary.avgWaitTimeMinutes}m`, icon: "⏱️", trend: "" },
+    { label: "Consultations", value: statsData.summary.totalTokensProcessed || "0", icon: "✅", trend: "" },
+  ] : [
+    { label: "Today's Appointments", value: "-", icon: "📅", trend: "" },
+    { label: "Active Queue", value: "-", icon: "📋", trend: "" },
+    { label: "Avg. Wait Time", value: "-", icon: "⏱️", trend: "" },
+    { label: "Consultations", value: "-", icon: "✅", trend: "" },
+  ];
 
   return (
     <div className="space-y-10 animate-fade-in text-surface-900 pb-20">
@@ -56,31 +89,43 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="bg-white border border-surface-200 p-2 rounded-2xl flex gap-1 shadow-sm">
-           <button className="px-4 py-2 bg-primary-50 text-primary-700 text-sm font-bold rounded-xl border border-primary-100">Daily View</button>
-           <button className="px-4 py-2 hover:bg-surface-50 text-surface-500 text-sm font-bold rounded-xl transition-colors">Weekly</button>
+           <button 
+             onClick={() => setPeriod("daily")}
+             className={`px-4 py-2 ${period === "daily" ? "bg-primary-50 text-primary-700 border border-primary-100" : "hover:bg-surface-50 text-surface-500"} text-sm font-bold rounded-xl transition-colors`}
+           >
+             Daily View
+           </button>
+           <button 
+             onClick={() => setPeriod("weekly")}
+             className={`px-4 py-2 ${period === "weekly" ? "bg-primary-50 text-primary-700 border border-primary-100" : "hover:bg-surface-50 text-surface-500"} text-sm font-bold rounded-xl transition-colors`}
+           >
+             Weekly
+           </button>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, i) => (
-          <div
-            key={stat.label}
-            className="glass p-6 group hover:border-primary-300 transition-all duration-300 transform hover:-translate-y-1"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-3xl grayscale group-hover:grayscale-0 transition-all">{stat.icon}</span>
-              {stat.trend && (
-                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg ${stat.trend.startsWith('+') ? 'bg-emerald-50 text-emerald-700' : 'bg-primary-50 text-primary-700'}`}>
-                  {stat.trend}
-                </span>
-              )}
+      {/* Stats Grid - Hidden for patients */}
+      {user.role !== "patient" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {displayStats.map((stat, i) => (
+            <div
+              key={stat.label}
+              className="glass p-6 group hover:border-primary-300 transition-all duration-300 transform hover:-translate-y-1"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-3xl grayscale group-hover:grayscale-0 transition-all">{stat.icon}</span>
+                {stat.trend && (
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg ${stat.trend.startsWith('+') ? 'bg-emerald-50 text-emerald-700' : 'bg-primary-50 text-primary-700'}`}>
+                    {stat.trend}
+                  </span>
+                )}
+              </div>
+              <p className="text-3xl font-black text-surface-950 tracking-tight">{stat.value}</p>
+              <p className="text-sm font-bold text-surface-400 mt-1 uppercase tracking-widest">{stat.label}</p>
             </div>
-            <p className="text-3xl font-black text-surface-950 tracking-tight">{stat.value}</p>
-            <p className="text-sm font-bold text-surface-400 mt-1 uppercase tracking-widest">{stat.label}</p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Quick Actions */}
       <section>

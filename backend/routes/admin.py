@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from email_validator import validate_email, EmailNotValidError
 from uuid import UUID
 import secrets
 
@@ -23,6 +24,16 @@ def create_user(
     current_user: User = Depends(require_role([UserRole.ADMIN])),
 ):
     """Create a user and invite them via email."""
+    try:
+        # validate and get info, check_deliverability=True verifies MX records
+        emailinfo = validate_email(request.email, check_deliverability=True)
+        request.email = emailinfo.normalized
+    except EmailNotValidError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
     existing = db.query(User).filter(User.email == request.email).first()
     if existing:
         raise HTTPException(

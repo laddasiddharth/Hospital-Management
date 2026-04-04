@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from email_validator import validate_email, EmailNotValidError
 
 from database import get_db
 from models.user import User, UserRole
@@ -40,6 +41,18 @@ def set_initial_password(request: SetPasswordRequest, db: Session = Depends(get_
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(request: RegisterRequest, db: Session = Depends(get_db)):
     """Register a new patient account."""
+    
+    # 3) Check whether the email on registering exists or not in real
+    try:
+        # validate and get info, check_deliverability=True verifies MX records
+        emailinfo = validate_email(request.email, check_deliverability=True)
+        request.email = emailinfo.normalized
+    except EmailNotValidError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
     existing = db.query(User).filter(User.email == request.email).first()
     if existing:
         raise HTTPException(

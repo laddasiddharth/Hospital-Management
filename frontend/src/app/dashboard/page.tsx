@@ -14,13 +14,15 @@ const roleQuickActions: Record<
   ],
   doctor: [
     { title: "My Schedule", desc: "Manage your consultations", icon: "📅", color: "from-accent-500/20 to-accent-600/10", href: "/dashboard/appointments" },
+    { title: "Live Queue", desc: "View and advance patients", icon: "📋", color: "from-primary-500/20 to-primary-600/10", href: "/dashboard/queue" },
   ],
   receptionist: [
     { title: "Book Walk-in", desc: "Register walk-in patients", icon: "🚶", color: "from-warning-500/20 to-warning-600/10", href: "/dashboard/book" },
-    { title: "Appointments", desc: "Manage pending records", icon: "📋", color: "from-primary-500/20 to-primary-600/10", href: "/dashboard/appointments" },
+    { title: "Manage Queue", desc: "Override and run Live Queue", icon: "⚡", color: "from-primary-500/20 to-primary-600/10", href: "/dashboard/queue" },
   ],
   patient: [
     { title: "Book Appointment", desc: "Schedule your next visit", icon: "📅", color: "from-primary-500/20 to-primary-600/10", href: "/dashboard/book" },
+    { title: "My Turn", desc: "Track your live position", icon: "⏳", color: "from-accent-500/20 to-accent-600/10", href: "/dashboard/queue" },
     { title: "History", desc: "View past appointments", icon: "📜", color: "from-blue-500/20 to-blue-600/10", href: "/dashboard/appointments" },
   ],
 };
